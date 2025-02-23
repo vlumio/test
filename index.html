@@ -1,1 +1,205 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lønnsklokke for 6 Ukers Turnus</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; background-color: #FAF9F6; }
+    .container { width: 80%; margin: auto; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .box { margin: 10px 0; padding: 15px; border-radius: 8px; font-size: 1.2em; font-weight: bold; }
+    #clock { font-size: 1.5em; background: #6495ED; color: white; }
+    #liveEarnings { font-size: 2em; background: #50C878; color: white; }
+    #effectiveHourlyRate { font-size: 1.5em; background: #6495ED; color: white; }
+    #nightBonus, #weekendBonus, #holidayBonus, #lokalttogBonus { font-size: 1.2em; }
+    .active { background: #50C878; color: black; }
+    .inactive { background: #D22B2B; color: black; }
+    input { padding: 10px; margin: 5px; font-size: 1.1em; }
+    .checkbox-group { margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Lønnsklokke for 6 Ukers Turnus</h1>
+  <div id="clock" class="box"></div>
+  <div id="liveEarnings" class="box">Tjent hittil: 0 kr</div>
+  <div id="effectiveHourlyRate" class="box">Effektiv timelønn: 672,32 kr</div>
+  
+  <div class="container">
+    <label for="startDate">Startdato for 6-ukers turnus:</label>
+    <input type="date" id="startDate">
+    
+    <label for="hourlyRate">Timelønn:</label>
+    <input type="number" id="hourlyRate" value="616">
+    
+    <div class="checkbox-group">
+      <input type="checkbox" id="holidayCheckbox">
+      <label for="holidayCheckbox">Beregn helligdagstillegg</label>
+    </div>
+    
+    <div class="checkbox-group">
+      <input type="checkbox" id="lokalttogCheckbox">
+      <label for="lokalttogCheckbox">Beregn lokalttog tillegg</label>
+    </div>
+
+    <!-- Felter for input per dag -->
+    <div id="daysContainer"></div>
+    
+    <div id="totalEarnings" class="box">Total lønn for turnus: 0 kr</div>
+    <div id="calculationBreakdown" class="box">Regnestykke: </div>
+  </div>
+  
+  <script>
+    // Hjelpefunksjon: Beregn antall minutter i intervallet [start, end] som tilfredsstiller bonusCheck
+    function computeBonusMinutes(start, end, bonusCheck) {
+      let bonusMinutes = 0;
+      let current = new Date(start);
+      while (current < end) {
+        if (bonusCheck(current)) bonusMinutes++;
+        current.setMinutes(current.getMinutes() + 1);
+      }
+      return bonusMinutes;
+    }
+    
+    function isNightBonusMinute(time) {
+      let h = time.getHours();
+      return (h >= 20 || h < 6);
+    }
+    
+    function isWeekendBonusMinute(time) {
+      let d = time.getDay();
+      let h = time.getHours();
+      return ((d === 5 && h >= 17) || d === 6 || d === 0 || (d === 1 && h < 6));
+    }
+    
+    function updateClock() {
+      const now = new Date();
+      const days = ["Søndag", "Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag"];
+      document.getElementById("clock").textContent = `${days[now.getDay()]}, ${now.toLocaleTimeString('no-NO')}`;
+      updateLiveEarnings();
+    }
+
+    function updateLiveEarnings() {
+      const startDate = document.getElementById("startDate").value;
+      const baseRate = parseFloat(document.getElementById("hourlyRate").value);
+      if (!startDate) return;
+      
+      let totalEarnings = 0;
+      let totalWorkHours = 0;
+      
+      const daysContainer = document.getElementById("daysContainer");
+      const dayInputs = daysContainer.querySelectorAll(".dayInput");
+      
+      dayInputs.forEach(input => {
+        const startDate = input.querySelector(".startDate").value;
+        const startTime = input.querySelector(".startTime").value;
+        const endDate = input.querySelector(".endDate").value;
+        const endTime = input.querySelector(".endTime").value;
+        
+        if (!startDate || !startTime || !endDate || !endTime) return;
+        
+        const start = new Date(`${startDate}T${startTime}`);
+        const end = new Date(`${endDate}T${endTime}`);
+        
+        if (end < start) return;
+        
+        const diffMs = end - start;
+        const hoursWorked = diffMs / (3600 * 1000);
+        totalWorkHours += hoursWorked;
+        
+        let baseEarnings = hoursWorked * baseRate;
+        let nightMinutes = computeBonusMinutes(start, end, isNightBonusMinute);
+        let weekendMinutes = computeBonusMinutes(start, end, isWeekendBonusMinute);
+        
+        let nightBonusHours = nightMinutes / 60;
+        let weekendBonusHours = weekendMinutes / 60;
+        let nightBonusTotal = nightBonusHours * 151.27;
+        let weekendBonusTotal = weekendBonusHours * 151.27;
+        
+        let holidayBonusPay = 0;
+        if (document.getElementById("holidayCheckbox").checked) {
+          let bonusStart = new Date(start);
+          bonusStart.setHours(6,0,0,0);
+          let bonusEnd = new Date(start);
+          bonusEnd.setHours(20,0,0,0);
+          if (start < bonusEnd && end > bonusStart) {
+            let bonusStartTime = new Date(Math.max(start, bonusStart));
+            let bonusEndTime = new Date(Math.min(end, bonusEnd));
+            let bonusHours = ((bonusEndTime - bonusStartTime) / (3600 * 1000)) * (10/60);
+            holidayBonusPay = bonusHours * baseRate;
+          }
+        }
+        
+        let lokalttogBonus = document.getElementById("lokalttogCheckbox").checked ? 134.46 : 0;
+        
+        const earnings = baseEarnings + nightBonusTotal + weekendBonusTotal + holidayBonusPay + lokalttogBonus;
+        totalEarnings += earnings;
+      });
+      
+      document.getElementById("totalEarnings").textContent = `Total lønn for turnus: ${totalEarnings.toFixed(2)} kr`;
+    }
+    
+    // Kalkulerer total lønn, bonus og viser et detaljert regnestykke for hele turnusen
+    function calculateWage() {
+      // Dette kan være en fremtidig funksjon for mer detaljerte visninger
+    }
+    
+    // Legger til feltene for hver dag i turnusen
+    function addDayInputs() {
+      const startDate = document.getElementById("startDate").value;
+      if (!startDate) return;
+      
+      const daysContainer = document.getElementById("daysContainer");
+      daysContainer.innerHTML = '';  // Tømmer før vi legger til nye inputs
+      
+      let currentDate = new Date(startDate);
+      
+      for (let i = 0; i < 42; i++) { // 6 uker * 7 dager = 42 dager
+        const dayInput = document.createElement("div");
+        dayInput.classList.add("dayInput");
+        
+        let dayLabel = document.createElement("label");
+        dayLabel.textContent = `Dag ${i+1} (${currentDate.toLocaleDateString('no-NO')})`;
+        
+        dayInput.appendChild(dayLabel);
+        
+        let startDateInput = document.createElement("input");
+        startDateInput.type = "date";
+        startDateInput.classList.add("startDate");
+        startDateInput.value = currentDate.toLocaleDateString('no-NO');
+        
+        let startTimeInput = document.createElement("input");
+        startTimeInput.type = "time";
+        startTimeInput.classList.add("startTime");
+        
+        let endDateInput = document.createElement("input");
+        endDateInput.type = "date";
+        endDateInput.classList.add("endDate");
+        
+        let endTimeInput = document.createElement("input");
+        endTimeInput.type = "time";
+        endTimeInput.classList.add("endTime");
+        
+        dayInput.appendChild(startDateInput);
+        dayInput.appendChild(startTimeInput);
+        dayInput.appendChild(endDateInput);
+        dayInput.appendChild(endTimeInput);
+        
+        daysContainer.appendChild(dayInput);
+        
+        // Øk datoen for neste dag
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      // Lytt på endringer
+      document.querySelectorAll("input").forEach(input => input.addEventListener("change", updateLiveEarnings));
+    }
+    
+    // Lytt på endringer i startdato for å legge til feltene for 6 ukers plan
+    document.getElementById("startDate").addEventListener("change", addDayInputs);
+    
+    // Oppdater klokken hver sekund
+    setInterval(updateClock, 1000);
+  </script>
+</body>
+</html>
 

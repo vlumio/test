@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="no">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>6-ukers Turnus Kalkulator</title>
+  <title>Årskalkulator for én gjentatt dag</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -11,173 +11,181 @@
       margin: 0;
       padding: 20px;
     }
-    h1 {
+    h1, h2 {
       text-align: center;
-      margin-bottom: 20px;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
+    .container {
+      max-width: 600px;
       margin: 0 auto;
-      max-width: 1200px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: center;
+    label {
+      display: inline-block;
+      width: 120px;
+      margin-bottom: 5px;
     }
-    th {
-      background-color: #eee;
-    }
-    input[type="date"], input[type="time"], input[type="number"] {
-      width: 100px;
+    select, input[type="time"], input[type="number"] {
       padding: 4px;
+      margin-bottom: 10px;
     }
-    input[type="checkbox"] {
-      transform: scale(1.3);
-      margin: 4px;
+    .checkbox-group {
+      margin-bottom: 10px;
+    }
+    .checkbox-group input {
+      transform: scale(1.2);
+      margin-right: 5px;
     }
     button {
       display: block;
-      margin: 0 auto 20px auto;
+      margin: 20px auto;
       padding: 10px 20px;
       font-size: 1em;
       cursor: pointer;
     }
-    tfoot td {
-      font-weight: bold;
+    .result {
+      text-align: center;
+      font-size: 1.2em;
+      margin-top: 15px;
     }
   </style>
 </head>
 <body>
-  <h1>6-ukers Turnus Kalkulator</h1>
+  <h1>Årskalkulator for én gjentatt dag</h1>
   
-  <button onclick="calculateAll()">Kalkuler alle dager</button>
-  
-  <table>
-    <thead>
-      <tr>
-        <th>Dag</th>
-        <th>Startdato</th>
-        <th>Starttid</th>
-        <th>Sluttdato</th>
-        <th>Sluttid</th>
-        <th>Timelønn (kr/t)</th>
-        <th>Helligdag?</th>
-        <th>Lokalttog?</th>
-        <th>Daglig lønn</th>
-      </tr>
-    </thead>
-    <tbody id="turnusTableBody">
-      <!-- Rader genereres automatisk av JS -->
-    </tbody>
-    <tfoot>
-      <tr>
-        <td colspan="8" style="text-align: right;">Total for alle dager:</td>
-        <td><span id="grandTotal">0 kr</span></td>
-      </tr>
-    </tfoot>
-  </table>
+  <div class="container">
+    <!-- Velg ukedag -->
+    <div>
+      <label for="dayOfWeek">Ukedag:</label>
+      <select id="dayOfWeek">
+        <option value="1">Mandag</option>
+        <option value="2">Tirsdag</option>
+        <option value="3">Onsdag</option>
+        <option value="4">Torsdag</option>
+        <option value="5">Fredag</option>
+        <option value="6">Lørdag</option>
+        <option value="0">Søndag</option>
+      </select>
+    </div>
+
+    <!-- Fri? -->
+    <div class="checkbox-group">
+      <input type="checkbox" id="friCheckbox">
+      <label for="friCheckbox">Fri</label>
+    </div>
+
+    <!-- Start- og sluttid -->
+    <div>
+      <label for="startTime">Starttid:</label>
+      <input type="time" id="startTime" />
+    </div>
+    <div>
+      <label for="endTime">Sluttid:</label>
+      <input type="time" id="endTime" />
+    </div>
+
+    <!-- Timelønn -->
+    <div>
+      <label for="hourlyRate">Timelønn:</label>
+      <input type="number" id="hourlyRate" value="616" />
+    </div>
+
+    <!-- Avkryssingsbokser for tillegg -->
+    <div class="checkbox-group">
+      <input type="checkbox" id="holidayCheckbox">
+      <label for="holidayCheckbox">Helligdagstillegg</label>
+      
+      <input type="checkbox" id="lokalttogCheckbox">
+      <label for="lokalttogCheckbox">Lokalttog tillegg</label>
+    </div>
+
+    <!-- Beregn-knapp -->
+    <button onclick="calculateYearly()">Beregn for hele året</button>
+    
+    <!-- Resultatvisning -->
+    <h2>Resultat</h2>
+    <div class="result">
+      <p>Antall dager: <span id="occurrences">0</span></p>
+      <p>Total lønn: <span id="totalEarnings">0 kr</span></p>
+    </div>
+  </div>
 
   <script>
-    // Antall dager i turnusen (6 uker * 7 dager = 42)
-    const NUM_DAYS = 42;
-
-    // Opprett rader dynamisk ved innlasting
-    document.addEventListener('DOMContentLoaded', () => {
-      const tableBody = document.getElementById("turnusTableBody");
-      let rows = "";
-      for (let i = 1; i <= NUM_DAYS; i++) {
-        rows += `
-        <tr>
-          <td>Dag ${i}</td>
-          <td><input type="date" id="startDate_${i}"></td>
-          <td><input type="time" id="startTime_${i}"></td>
-          <td><input type="date" id="endDate_${i}"></td>
-          <td><input type="time" id="endTime_${i}"></td>
-          <td><input type="number" id="hourlyRate_${i}" value="616"></td>
-          <td><input type="checkbox" id="holidayCheckbox_${i}"></td>
-          <td><input type="checkbox" id="lokalttogCheckbox_${i}"></td>
-          <td><span id="dayTotal_${i}">0 kr</span></td>
-        </tr>`;
-      }
-      tableBody.innerHTML = rows;
-    });
-
-    // Hjelpefunksjon for å telle minutter innenfor bonusperiode
-    function computeBonusMinutes(start, end, bonusCheck) {
-      let bonusMinutes = 0;
-      let current = new Date(start);
-      while (current < end) {
-        if (bonusCheck(current)) bonusMinutes++;
-        current.setMinutes(current.getMinutes() + 1);
-      }
-      return bonusMinutes;
-    }
-
-    // Kveldstillegg: kl. 20:00 - 06:00
+    // Sjekker om et gitt minutt faller i kveldstilleggsperioden (20:00 - 06:00)
     function isNightBonusMinute(time) {
       const h = time.getHours();
       return (h >= 20 || h < 6);
     }
 
-    // Helgetillegg: fredag etter 17, hele lørdag/søndag, mandag før 06
+    // Sjekker om et gitt minutt faller i helgetilleggsperioden
+    // (Fredag etter kl. 17, hele lørdag/søndag, og mandag før kl. 06)
     function isWeekendBonusMinute(time) {
-      const d = time.getDay(); // 0= søn, 1= man, ... 6= lør
+      const d = time.getDay(); // 0=søndag, 1=mandag, ... 6=lørdag
       const h = time.getHours();
       return (
         (d === 5 && h >= 17) || // fredag etter 17
         d === 6 ||              // lørdag
         d === 0 ||              // søndag
-        (d === 1 && h < 6)      // mandag før kl. 06
+        (d === 1 && h < 6)      // mandag før 06
       );
     }
 
-    // Beregn lønn for én dag (rad i tabellen)
-    function calculateDay(i) {
-      const startDateVal = document.getElementById(`startDate_${i}`).value;
-      const startTimeVal = document.getElementById(`startTime_${i}`).value;
-      const endDateVal   = document.getElementById(`endDate_${i}`).value;
-      const endTimeVal   = document.getElementById(`endTime_${i}`).value;
-      const baseRate     = parseFloat(document.getElementById(`hourlyRate_${i}`).value) || 0;
-      const holidayActive   = document.getElementById(`holidayCheckbox_${i}`).checked;
-      const lokalttogActive = document.getElementById(`lokalttogCheckbox_${i}`).checked;
+    // Går minutt for minutt mellom start og slutt og teller opp
+    // hvor mange minutter som faller i en bonus-periode (definert av bonusCheck)
+    function computeBonusMinutes(start, end, bonusCheck) {
+      let bonusMinutes = 0;
+      let current = new Date(start);
+      while (current < end) {
+        if (bonusCheck(current)) {
+          bonusMinutes++;
+        }
+        current.setMinutes(current.getMinutes() + 1);
+      }
+      return bonusMinutes;
+    }
 
-      // Sjekk om alle felter er fylt ut
-      if (!startDateVal || !startTimeVal || !endDateVal || !endTimeVal) return 0;
+    // Beregner lønn for én gitt dag (start og sluttid), inkl. kvelds-, helg- og ev. helligdagstillegg
+    function calculateDayWage(dayDate, startTimeVal, endTimeVal, baseRate, holidayActive, lokalttogActive) {
+      // Splitter time-feltene (HH:MM)
+      const [startH, startM] = startTimeVal.split(":").map(Number);
+      const [endH, endM]     = endTimeVal.split(":").map(Number);
 
-      // Lag Date-objekter
-      const start = new Date(`${startDateVal}T${startTimeVal}`);
-      const end   = new Date(`${endDateVal}T${endTimeVal}`);
+      // Konstruerer start og slutt
+      let start = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), startH, startM);
+      let end   = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), endH, endM);
 
-      // Dersom slutt er før/lik start, gir vi 0
-      if (end <= start) return 0;
+      // Hvis sluttid <= starttid, antar vi at vakten går til neste døgn
+      if (end <= start) {
+        end.setDate(end.getDate() + 1);
+      }
 
       // Grunnlønn
       const diffMs = end - start;
-      const hoursWorked = diffMs / (3600 * 1000);
+      const hoursWorked = diffMs / 3600000; // ms -> timer
       const baseEarnings = hoursWorked * baseRate;
 
-      // Kveld/helg-beregning
-      const nightMinutes   = computeBonusMinutes(start, end, isNightBonusMinute);
+      // Kveld/helg beregning
+      const nightMinutes = computeBonusMinutes(start, end, isNightBonusMinute);
       const weekendMinutes = computeBonusMinutes(start, end, isWeekendBonusMinute);
-      const nightBonusTotal   = (nightMinutes / 60) * 151.27;
+      const nightBonusTotal = (nightMinutes / 60) * 151.27;
       const weekendBonusTotal = (weekendMinutes / 60) * 151.27;
 
-      // Helligdagstillegg
+      // Helligdagstillegg: 10 min ekstra per time i tidsrommet 06–20
       let holidayBonusPay = 0;
       if (holidayActive) {
-        // Sjekk kun periode 06-20
-        const bonusStart = new Date(start);
+        let bonusStart = new Date(start);
         bonusStart.setHours(6, 0, 0, 0);
-        const bonusEnd = new Date(start);
+        let bonusEnd = new Date(start);
         bonusEnd.setHours(20, 0, 0, 0);
 
+        // Sjekk om arbeidstiden overlapper 06–20
         if (start < bonusEnd && end > bonusStart) {
           const bonusStartTime = new Date(Math.max(start, bonusStart));
           const bonusEndTime   = new Date(Math.min(end, bonusEnd));
-          // 10 min ekstra pr time
-          const bonusHours = (bonusEndTime - bonusStartTime) / (3600 * 1000) * (10 / 60);
+          // 10 minutter ekstra pr. time
+          const bonusHours = (bonusEndTime - bonusStartTime) / 3600000 * (10 / 60);
           holidayBonusPay = bonusHours * baseRate;
         }
       }
@@ -185,19 +193,54 @@
       // Lokalttog-tillegg (engangsbeløp)
       const lokalttogBonus = lokalttogActive ? 134.46 : 0;
 
-      // Sum for dagen
+      // Summer alt
       return baseEarnings + nightBonusTotal + weekendBonusTotal + holidayBonusPay + lokalttogBonus;
     }
 
-    // Kjør beregning for alle dager (42) og oppdater tabellen + total
-    function calculateAll() {
-      let grandTotal = 0;
-      for (let i = 1; i <= NUM_DAYS; i++) {
-        const dayTotal = calculateDay(i);
-        document.getElementById(`dayTotal_${i}`).textContent = dayTotal.toFixed(2) + " kr";
-        grandTotal += dayTotal;
+    // Gjennomgår hele året og beregner sum for hver forekomst av valgt ukedag
+    function calculateYearly() {
+      // Hvis dagen er merket "Fri", blir alt 0
+      const fri = document.getElementById("friCheckbox").checked;
+      if (fri) {
+        document.getElementById("occurrences").textContent = "0";
+        document.getElementById("totalEarnings").textContent = "0 kr";
+        return;
       }
-      document.getElementById("grandTotal").textContent = grandTotal.toFixed(2) + " kr";
+
+      // Hent inputfelter
+      const selectedDayOfWeek = parseInt(document.getElementById("dayOfWeek").value, 10);
+      const startTimeVal      = document.getElementById("startTime").value;
+      const endTimeVal        = document.getElementById("endTime").value;
+      const baseRate          = parseFloat(document.getElementById("hourlyRate").value) || 0;
+      const holidayActive     = document.getElementById("holidayCheckbox").checked;
+      const lokalttogActive   = document.getElementById("lokalttogCheckbox").checked;
+
+      // Sjekk at vi har start/sluttid
+      if (!startTimeVal || !endTimeVal) {
+        alert("Vennligst fyll ut start- og sluttid.");
+        return;
+      }
+
+      // Velg hvilket år som skal beregnes (f.eks. inneværende år)
+      const year = new Date().getFullYear();
+      const startOfYear = new Date(year, 0, 1);   // 1. januar
+      const endOfYear   = new Date(year, 11, 31); // 31. desember
+
+      let total = 0;
+      let count = 0;
+
+      // Løkke fra 1. jan til 31. des
+      for (let d = new Date(startOfYear); d <= endOfYear; d.setDate(d.getDate() + 1)) {
+        if (d.getDay() === selectedDayOfWeek) {
+          // Hvis dagen i 'd' samsvarer med valgt ukedag (0=søndag, 1=mandag, etc.)
+          total += calculateDayWage(d, startTimeVal, endTimeVal, baseRate, holidayActive, lokalttogActive);
+          count++;
+        }
+      }
+
+      // Oppdater visning
+      document.getElementById("occurrences").textContent = count;
+      document.getElementById("totalEarnings").textContent = total.toFixed(2) + " kr";
     }
   </script>
 </body>

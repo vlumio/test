@@ -92,44 +92,116 @@
   </div>
   
   <script>
-    /****************************************************
-     *  GENERERING AV 42-RADERS TURNUSOPPSETT
-     ****************************************************/
-    const cycleTableBody = document.getElementById("cycleTableBody");
+    // -----------------------------------------------
+    // 1) FORHÅNDSUTFYLTE DAGER (42 STK)
+    // -----------------------------------------------
+    // 'fri: true' = Fri, ingen tider. 'fri: false' = bruk start/end
+    // Alle har standard timelønn 616, ingen hellig/lokalttog krysset.
+    const defaultShifts = [
+      // Uke 1 (dager 1..7)
+      {start: \"\",      end: \"\",      fri: true},  // Dag 1 (Man) Fri
+      {start: \"07:21\", end: \"15:48\", fri: false}, // Dag 2 (Tir)
+      {start: \"07:18\", end: \"15:22\", fri: false}, // Dag 3 (Ons)
+      {start: \"\",      end: \"\",      fri: true},  // Dag 4 (Tor) Fri
+      {start: \"06:36\", end: \"14:21\", fri: false}, // Dag 5 (Fre)
+      {start: \"06:36\", end: \"14:58\", fri: false}, // Dag 6 (Lør)
+      {start: \"10:11\", end: \"20:00\", fri: false}, // Dag 7 (Søn)
+      // Uke 2 (dager 8..14)
+      {start: \"\",      end: \"\",      fri: true},  // 8 (Man) Fri
+      {start: \"05:56\", end: \"15:50\", fri: false}, // 9 (Tir)
+      {start: \"05:31\", end: \"14:51\", fri: false}, // 10 (Ons)
+      {start: \"14:00\", end: \"15:30\", fri: false}, // 11 (Tor)
+      {start: \"13:00\", end: \"15:00\", fri: false}, // 12 (Fre)
+      {start: \"\",      end: \"\",      fri: true},  // 13 (Lør) Fri
+      {start: \"\",      end: \"\",      fri: true},  // 14 (Søn) Fri
+      // Uke 3 (dager 15..21)
+      {start: \"\",      end: \"\",      fri: true},  // 15 (Man) Fri
+      {start: \"\",      end: \"\",      fri: true},  // 16 (Tir) Fri
+      {start: \"14:35\", end: \"23:34\", fri: false}, // 17 (Ons)
+      {start: \"15:00\", end: \"23:15\", fri: false}, // 18 (Tor)
+      {start: \"17:00\", end: \"01:00\", fri: false}, // 19 (Fre)
+      {start: \"\",      end: \"\",      fri: true},  // 20 (Lør) Fri
+      {start: \"\",      end: \"\",      fri: true},  // 21 (Søn) Fri
+      // Uke 4 (dager 22..28)
+      {start: \"\",      end: \"\",      fri: true},  // 22 (Man) Fri
+      {start: \"06:00\", end: \"16:00\", fri: false}, // 23 (Tir)
+      {start: \"06:00\", end: \"15:00\", fri: false}, // 24 (Ons)
+      {start: \"07:00\", end: \"17:00\", fri: false}, // 25 (Tor)
+      {start: \"06:00\", end: \"15:00\", fri: false}, // 26 (Fre)
+      {start: \"\",      end: \"\",      fri: true},  // 27 (Lør) Fri
+      {start: \"\",      end: \"\",      fri: true},  // 28 (Søn) Fri
+      // Uke 5 (dager 29..35)
+      {start: \"\",      end: \"\",      fri: true},  // 29 (Man) Fri
+      {start: \"\",      end: \"\",      fri: true},  // 30 (Tir) Fri
+      {start: \"06:00\", end: \"15:00\", fri: false}, // 31 (Ons)
+      {start: \"05:06\", end: \"13:31\", fri: false}, // 32 (Tor)
+      {start: \"06:00\", end: \"15:00\", fri: false}, // 33 (Fre)
+      {start: \"06:38\", end: \"14:01\", fri: false}, // 34 (Lør)
+      {start: \"\",      end: \"\",      fri: true},  // 35 (Søn) Fri
+      // Uke 6 (dager 36..42)
+      {start: \"07:25\", end: \"16:16\", fri: false}, // 36 (Man)
+      {start: \"16:16\", end: \"23:36\", fri: false}, // 37 (Tir)
+      {start: \"14:23\", end: \"21:23\", fri: false}, // 38 (Ons)
+      {start: \"\",      end: \"\",      fri: true},  // 39 (Tor) Fri
+      {start: \"\",      end: \"\",      fri: true},  // 40 (Fre) Fri
+      {start: \"\",      end: \"\",      fri: true},  // 41 (Lør) Fri
+      {start: \"\",      end: \"\",      fri: true}   // 42 (Søn) Fri
+    ];
+
+    // Antall dager i turnusen
     const CYCLE_DAYS = 42;
+    
+    // 2) GENERER RADER I TURNUS-TABELLEN
+    const cycleTableBody = document.getElementById(\"cycleTableBody\");
     for (let i = 1; i <= CYCLE_DAYS; i++) {
-      const row = document.createElement("tr");
+      const shiftData = defaultShifts[i-1];  // i-1 pga. array-indeks
+      const row = document.createElement(\"tr\");
+      
+      // For \"Fri\"-dagene, start/end-time felter er disabled og grået ut
+      const isFri = shiftData.fri ? \"checked\" : \"\";
+      const disabled = shiftData.fri ? \"disabled class='disabled'\" : \"\";
+      
       row.innerHTML = `
         <td>${i}</td>
-        <td><input type="checkbox" id="fri_${i}"></td>
-        <td><input type="time" id="startTime_${i}"></td>
-        <td><input type="time" id="endTime_${i}"></td>
-        <td><input type="number" id="hourlyRate_${i}" value="616"></td>
-        <td><input type="checkbox" id="holidayCheckbox_${i}"></td>
-        <td><input type="checkbox" id="lokalttogCheckbox_${i}"></td>
+        <td><input type=\"checkbox\" id=\"fri_${i}\" ${isFri}></td>
+        <td>
+          <input type=\"time\" id=\"startTime_${i}\" value=\"${shiftData.start}\" ${disabled}>
+        </td>
+        <td>
+          <input type=\"time\" id=\"endTime_${i}\" value=\"${shiftData.end}\" ${disabled}>
+        </td>
+        <td>
+          <input type=\"number\" id=\"hourlyRate_${i}\" value=\"616\">
+        </td>
+        <td>
+          <input type=\"checkbox\" id=\"holidayCheckbox_${i}\">
+        </td>
+        <td>
+          <input type=\"checkbox\" id=\"lokalttogCheckbox_${i}\">
+        </td>
       `;
       cycleTableBody.appendChild(row);
     }
-    
+
     /****************************************************
-     *  DISABLE TID-FELT NÅR "FRI" ER KRYSSET AV
+     *  DISABLE TID-FELT NÅR \"FRI\" ER KRYSSET AV
      ****************************************************/
     for (let i = 1; i <= CYCLE_DAYS; i++) {
       const friCheckbox    = document.getElementById(`fri_${i}`);
       const startTimeInput = document.getElementById(`startTime_${i}`);
       const endTimeInput   = document.getElementById(`endTime_${i}`);
       
-      friCheckbox.addEventListener("change", () => {
+      friCheckbox.addEventListener(\"change\", () => {
         if (friCheckbox.checked) {
           startTimeInput.disabled = true;
-          endTimeInput.disabled = true;
-          startTimeInput.classList.add("disabled");
-          endTimeInput.classList.add("disabled");
+          endTimeInput.disabled   = true;
+          startTimeInput.classList.add(\"disabled\");
+          endTimeInput.classList.add(\"disabled\");
         } else {
           startTimeInput.disabled = false;
-          endTimeInput.disabled = false;
-          startTimeInput.classList.remove("disabled");
-          endTimeInput.classList.remove("disabled");
+          endTimeInput.disabled   = false;
+          startTimeInput.classList.remove(\"disabled\");
+          endTimeInput.classList.remove(\"disabled\");
         }
       });
     }
@@ -145,8 +217,9 @@
     
     // Helgetillegg: fredag etter 17, hele lørdag/søndag, mandag før 06
     function isWeekendBonusMinute(dateTime) {
-      const day = dateTime.getDay(); // 0=søndag, 1=mandag, ... 6=lørdag
-      const h = dateTime.getHours();
+      // 0=søndag, 1=mandag, ... 5=fredag, 6=lørdag
+      const day = dateTime.getDay();
+      const h   = dateTime.getHours();
       return ((day === 5 && h >= 17) || day === 6 || day === 0 || (day === 1 && h < 6));
     }
     
@@ -180,17 +253,17 @@
       
       if (!startTimeVal || !endTimeVal) return 0;
       
-      // Bruk 'dateObj' som basisdato for vakten
+      // Bygg start/slutt basert på 'dateObj'
       let start = new Date(dateObj);
       let end   = new Date(dateObj);
       
-      const [startH, startM] = startTimeVal.split(":").map(Number);
-      const [endH, endM]     = endTimeVal.split(":").map(Number);
+      const [startH, startM] = startTimeVal.split(\":\").map(Number);
+      const [endH, endM]     = endTimeVal.split(\":\").map(Number);
       
       start.setHours(startH, startM, 0, 0);
       end.setHours(endH, endM, 0, 0);
       
-      // Dersom sluttid er tidligere enn eller lik starttid, antas vakten å gå over midnatt
+      // Hvis slutt <= start, antar vi vakten går over midnatt
       if (end <= start) {
         end.setDate(end.getDate() + 1);
       }
@@ -206,7 +279,7 @@
       const nightBonus     = (nightMinutes / 60) * 151.27;
       const weekendBonus   = (weekendMinutes / 60) * 151.27;
       
-      // 3) Helligdagstillegg: 10 minutter ekstra per time mellom 06:00–20:00
+      // 3) Helligdagstillegg (10 min ekstra pr. time i tidsrommet 06–20)
       let holidayBonusPay = 0;
       if (holidayActive) {
         let bonusStart = new Date(start);
@@ -235,7 +308,7 @@
      ****************************************************/
     function calculateYearWages() {
       const year = new Date().getFullYear();
-      const startDate = new Date(year, 0, 1);   // 1. januar
+      const startDate = new Date(year, 0, 1);    // 1. januar
       const endDate   = new Date(year, 11, 31);  // 31. desember
       
       let totalYearWage = 0;
@@ -243,17 +316,18 @@
       
       // For hver dato fra 1. jan til 31. des
       for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        // Finn antall hele dager fra start; cycleIndex = ((d - startDate) mod 42) + 1
-        let diffTime = d - startDate;
+        // Finn antall hele dager fra start
+        let diffTime = d - startDate; // ms
         let diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        // cycleIndex = ((antall dager) mod 42) + 1
         let cycleIndex = (diffDays % CYCLE_DAYS) + 1;
         
-        // Kopi av datoen for beregning (d endres i løkken)
+        // Lønn for denne datoen
         let currentDate = new Date(d);
         let wage = calculateShiftWage(cycleIndex, currentDate);
         totalYearWage += wage;
         
-        // Lagre detaljeinformasjon for vakt
+        // Lagre detaljeinfo
         let options = { year: 'numeric', month: '2-digit', day: '2-digit' };
         shiftDetails.push({
           date: currentDate.toLocaleDateString('no-NO', options),
@@ -263,27 +337,27 @@
       }
       
       // Oppdater total årslønn
-      document.getElementById("yearTotal").textContent = totalYearWage.toFixed(2) + " kr";
+      document.getElementById(\"yearTotal\").textContent = totalYearWage.toFixed(2) + \" kr\";
       
       // Oppdater tabellen med vaktdetaljer
-      const shiftTableBody = document.getElementById("shiftTableBody");
-      shiftTableBody.innerHTML = "";
+      const shiftTableBody = document.getElementById(\"shiftTableBody\");
+      shiftTableBody.innerHTML = \"\";
       shiftDetails.forEach(shift => {
-        let row = document.createElement("tr");
+        let row = document.createElement(\"tr\");
         row.innerHTML = `<td>${shift.date}</td><td>${shift.cycleDay}</td><td>${shift.wage} kr</td>`;
         shiftTableBody.appendChild(row);
       });
     }
     
     /****************************************************
-     *  FUNKSJON FOR Å VISE/SKJULE VAKTDETALJER
+     *  VIS / SKJUL VAKTDETALJER
      ****************************************************/
     function toggleShiftDetails() {
-      const detailsDiv = document.getElementById("shiftDetails");
-      if (detailsDiv.style.display === "none" || detailsDiv.style.display === "") {
-        detailsDiv.style.display = "block";
+      const detailsDiv = document.getElementById(\"shiftDetails\");
+      if (detailsDiv.style.display === \"none\" || detailsDiv.style.display === \"\") {
+        detailsDiv.style.display = \"block\";
       } else {
-        detailsDiv.style.display = "none";
+        detailsDiv.style.display = \"none\";
       }
     }
   </script>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lønnsklokke - Årskalkulator</title>
+  <title>Lønnsklokke - Beregn Hver Dag</title>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; background-color: #FAF9F6; }
     .container { width: 60%; margin: auto; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -14,12 +14,12 @@
     #nightBonus, #weekendBonus, #holidayBonus, #lokalttogBonus { font-size: 1.2em; }
     .active { background: #50C878; color: black; }
     .inactive { background: #D22B2B; color: black; }
-    input { padding: 10px; margin: 5px; font-size: 1.1em; }
+    input, select { padding: 10px; margin: 5px; font-size: 1.1em; }
     .checkbox-group { margin: 10px 0; }
   </style>
 </head>
 <body>
-  <h1>Lønnsklokke - Årskalkulator</h1>
+  <h1>Lønnsklokke - Beregn Inntekt Hver Dag</h1>
   <div id="clock" class="box"></div>
   <div id="liveEarnings" class="box">Tjent hittil: 0 kr</div>
   <div id="effectiveHourlyRate" class="box">Effektiv timelønn: 672,32 kr</div>
@@ -38,111 +38,81 @@
       <label for="lokalttogCheckbox">Beregn lokalttog tillegg</label>
     </div>
     
-    <div id="nightBonus" class="box inactive">kr 0 - Kveldstillegg</div>
-    <div id="weekendBonus" class="box inactive">kr 0 - Helgetillegg</div>
-    <div id="holidayBonus" class="box inactive">kr 0 - Helligdagstillegg (0 timer)</div>
-    <div id="lokalttogBonus" class="box inactive">kr 0 - Lokalttog tillegg</div>
+    <div class="checkbox-group">
+      <input type="checkbox" id="nightBonusCheckbox">
+      <label for="nightBonusCheckbox">Beregn kveldstillegg (20:00 - 06:00)</label>
+    </div>
     
-    <div id="workDuration" class="box">Vakttid: 0 timer</div>
-    <div id="totalEarnings" class="box">Total lønn: 0 kr</div>
-    <div id="calculationBreakdown" class="box">Regnestykke: </div>
-    
-    <div>
-      <label for="weeksInYear">Antall uker i turnus:</label>
-      <input type="number" id="weeksInYear" value="6">
+    <div class="checkbox-group">
+      <input type="checkbox" id="weekendBonusCheckbox">
+      <label for="weekendBonusCheckbox">Beregn helgetillegg (Fre etter 17:00, Lør, Søn, Man før 06:00)</label>
     </div>
     
     <div>
-      <button onclick="calculateAnnualIncome()">Beregn årsinntekt</button>
+      <label for="workDayDate">Velg dato:</label>
+      <input type="date" id="workDayDate" value="2025-01-01">
+    </div>
+    
+    <div>
+      <label for="workDuration">Arbeidstid (timer):</label>
+      <input type="number" id="workDuration" value="8" step="0.1">
     </div>
 
-    <div id="annualIncome" class="box">Årskalkulator: Total inntekt: 0 kr</div>
+    <div>
+      <button onclick="calculateDailyIncome()">Beregn inntekt for denne dagen</button>
+    </div>
+    
+    <div id="dailyIncomeResult" class="box">Inntekt for denne dagen: 0 kr</div>
   </div>
   
   <script>
-    // Hjelpefunksjon: Beregn antall minutter i intervallet [start, end] som tilfredsstiller bonusCheck
-    function computeBonusMinutes(start, end, bonusCheck) {
-      let bonusMinutes = 0;
-      let current = new Date(start);
-      while (current < end) {
-        if (bonusCheck(current)) bonusMinutes++;
-        current.setMinutes(current.getMinutes() + 1);
-      }
-      return bonusMinutes;
-    }
-    
-    // Returnerer true dersom tidspunktet kvalifiserer for kveldstillegg (20:00 - 06:00)
-    function isNightBonusMinute(time) {
-      let h = time.getHours();
-      return (h >= 20 || h < 6);
-    }
-    
-    // Returnerer true dersom tidspunktet kvalifiserer for helgetillegg (Fredag etter 17, Lørdag, Søndag, Mandag før 06)
-    function isWeekendBonusMinute(time) {
-      let d = time.getDay();
-      let h = time.getHours();
-      return ((d === 5 && h >= 17) || d === 6 || d === 0 || (d === 1 && h < 6));
-    }
-    
-    // Kalkulerer inntekt for en 6-ukers periode
-    function calculatePeriodIncome(startDate) {
+    // Beregn inntekt for en enkelt arbeidsdag
+    function calculateDailyIncome() {
       const baseRate = parseFloat(document.getElementById("hourlyRate").value);
+      const workDuration = parseFloat(document.getElementById("workDuration").value);
       const holidayActive = document.getElementById("holidayCheckbox").checked;
       const lokalttogActive = document.getElementById("lokalttogCheckbox").checked;
+      const nightBonusActive = document.getElementById("nightBonusCheckbox").checked;
+      const weekendBonusActive = document.getElementById("weekendBonusCheckbox").checked;
 
-      // Beregn slutt tid for 6 uker fra startdato
-      let endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 42); // 6 uker
+      let date = new Date(document.getElementById("workDayDate").value);
+      let totalEarnings = workDuration * baseRate;  // Grunninntekt uten tillegg
 
-      const diffMs = endDate - startDate;
-      const hoursWorked = diffMs / (3600 * 1000);
-      let baseEarnings = hoursWorked * baseRate;
-      
-      // Beregn bonusene
-      let nightMinutes = computeBonusMinutes(startDate, endDate, isNightBonusMinute);
-      let weekendMinutes = computeBonusMinutes(startDate, endDate, isWeekendBonusMinute);
-      let nightBonusTotal = (nightMinutes / 60) * 151.27;
-      let weekendBonusTotal = (weekendMinutes / 60) * 151.27;
+      // Beregn natt- og helgetillegg
+      let nightBonusTotal = 0;
+      let weekendBonusTotal = 0;
+
+      if (nightBonusActive) {
+        // Nattbonus for arbeidstid mellom 20:00 og 06:00
+        let workStartHour = date.getHours();
+        if (workStartHour >= 20 || workStartHour < 6) {
+          nightBonusTotal = workDuration * 151.27;  // Eksempel på nattbonus per time
+        }
+      }
+
+      if (weekendBonusActive) {
+        // Helgetillegg for arbeid på fredag etter kl 17, lørdag, søndag eller mandag før kl 06
+        let dayOfWeek = date.getDay();
+        if (dayOfWeek === 5 && date.getHours() >= 17 || dayOfWeek === 6 || dayOfWeek === 0 || (dayOfWeek === 1 && date.getHours() < 6)) {
+          weekendBonusTotal = workDuration * 151.27;  // Eksempel på helgetillegg per time
+        }
+      }
 
       // Helligdagstillegg
       let holidayBonusPay = 0;
       if (holidayActive) {
-        let bonusStart = new Date(startDate);
-        bonusStart.setHours(6,0,0,0);
-        let bonusEnd = new Date(startDate);
-        bonusEnd.setHours(20,0,0,0);
-        if (startDate < bonusEnd && endDate > bonusStart) {
-          let bonusStartTime = new Date(Math.max(startDate, bonusStart));
-          let bonusEndTime = new Date(Math.min(endDate, bonusEnd));
-          let bonusHours = ((bonusEndTime - bonusStartTime) / (3600 * 1000)) * (10/60);
-          holidayBonusPay = bonusHours * baseRate;
-        }
+        holidayBonusPay = workDuration * baseRate * 0.5;  // Eksempel på 50% tillegg på arbeidsdager
       }
 
       // Lokalttog tillegg
-      let lokalttogBonus = lokalttogActive ? 134.46 : 0;
-      
-      const totalEarnings = baseEarnings + nightBonusTotal + weekendBonusTotal + holidayBonusPay + lokalttogBonus;
-      return totalEarnings;
+      let lokalttogBonus = lokalttogActive ? 134.46 : 0;  // Eksempel på fast lokalttogtillegg
+
+      // Total inntekt for dagen
+      totalEarnings += nightBonusTotal + weekendBonusTotal + holidayBonusPay + lokalttogBonus;
+
+      // Vis resultat
+      document.getElementById("dailyIncomeResult").textContent = `Inntekt for denne dagen: ${totalEarnings.toFixed(2)} kr`;
     }
-
-    // Beregn inntekt for hele året
-    function calculateAnnualIncome() {
-      // Startdato: 1. januar
-      let startDate = new Date('2025-01-01');
-      let annualIncome = 0;
-
-      // Beregn inntekt for hver 6-ukers periode
-      for (let i = 0; i < 52 / 6; i++) {
-        annualIncome += calculatePeriodIncome(startDate);
-        startDate.setDate(startDate.getDate() + 42); // Øk datoen med 6 uker
-      }
-
-      document.getElementById("annualIncome").textContent = `Årskalkulator: Total inntekt: ${annualIncome.toFixed(2)} kr`;
-    }
-
-    // Lytter til endringer i inputfeltene
-    document.querySelectorAll("input").forEach(input => input.addEventListener("change", calculateWage));
   </script>
 </body>
 </html>
